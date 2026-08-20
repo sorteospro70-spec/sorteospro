@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorteos Pro - Gran Sorteo de Alta Joyería en Oro y Plata</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Montserrat:wght@300;400;600;800&display=swap');
+        
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background-color: #050505; 
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        .font-serif { font-family: 'Cinzel', serif; }
+
+        .gold-glow { box-shadow: 0 0 25px rgba(212, 175, 55, 0.4), inset 0 0 12px rgba(212, 175, 55, 0.2); }
+
+        .gold-gradient-text {
+            background: linear-gradient(to right, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+        }
+        
+        .gold-bg { background: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7); }
+        .luxury-bg { background: radial-gradient(circle at 50% 0%, #1a2a1f 0%, #050505 70%); }
+        .pattern-overlay { background-image: radial-gradient(rgba(212, 175, 55, 0.05) 1px, transparent 1px); background-size: 30px 30px; }
+
+        .ticket { 
+            transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1); 
+            position: relative; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 3.75rem;
+            user-select: none;
+            border-radius: 8px;
+            font-family: 'Cinzel', serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            overflow: hidden;
+        }
+
+        .ticket.disponible { 
+            cursor: pointer; 
+            background: linear-gradient(145deg, #121212 0%, #1f1f1f 100%);
+            border: 1px solid #BF953F;
+            color: #FCF6BA;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1);
+        }
+
+        .ticket.disponible:hover { 
+            transform: translateY(-4px) scale(1.04); 
+            border-color: #FCF6BA;
+            box-shadow: 0 10px 20px rgba(212, 175, 55, 0.35), inset 0 0 10px rgba(212, 175, 55, 0.2);
+            z-index: 10;
+        }
+
+        .ticket.seleccionado {
+            background: linear-gradient(135deg, #BF953F, #AA771C);
+            border: 2px solid #FCF6BA;
+            color: #000000;
+            font-weight: 800;
+            box-shadow: 0 0 20px rgba(252, 246, 186, 0.6);
+            transform: scale(1.06);
+            z-index: 20;
+        }
+        
+        .ticket.ocupado { 
+            cursor: not-allowed; 
+            pointer-events: none;
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a; 
+            color: #555555; 
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.015) 8px, rgba(255,255,255,0.015) 16px);
+        }
+
+        .ticket.pagado {
+            cursor: not-allowed;
+            pointer-events: none;
+            background: #111827;
+            border: 1px solid #374151;
+            color: #6b7280;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 1s ease-out forwards; }
+        
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 25px rgba(212, 175, 55, 0.3), inset 0 0 15px rgba(212, 175, 55, 0.1); }
+            50% { box-shadow: 0 0 65px rgba(212, 175, 55, 0.75), inset 0 0 25px rgba(212, 175, 55, 0.3); }
+            100% { box-shadow: 0 0 25px rgba(212, 175, 55, 0.3), inset 0 0 15px rgba(212, 175, 55, 0.1); }
+        }
+        .image-glow { animation: pulse-glow 2.5s infinite ease-in-out; }
+
+        @keyframes jackpot-flash {
+            0% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.02); filter: brightness(1.15); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+        .jackpot-pulse { animation: jackpot-flash 3s infinite ease-in-out; }
+    </style>
+</head>
+<body class="luxury-bg min-h-screen relative pb-28 md:pb-0">
+    
+    <div class="fixed inset-0 pattern-overlay pointer-events-none z-0"></div>
+
+    <nav class="bg-black/95 backdrop-blur-md sticky top-0 z-50 border-b border-[#BF953F]/40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center relative z-10">
+            <div class="flex items-center gap-3 group cursor-pointer" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full gold-bg flex items-center justify-center text-black font-serif font-bold text-lg sm:text-xl shadow-[0_0_20px_rgba(212,175,55,0.7)] group-hover:scale-110 transition duration-300">SP</div>
+                <h1 class="text-xl sm:text-2xl font-serif tracking-[0.2em] text-white uppercase"><span class="gold-gradient-text">Sorteos</span> Pro</h1>
+            </div>
+            <div class="flex items-center gap-4 sm:gap-6">
+                <a href="panelJoyas.html" class="text-xs sm:text-sm uppercase tracking-widest text-[#BF953F] hover:text-[#FCF6BA] transition duration-300 font-bold border border-[#BF953F]/50 px-3 py-1.5 rounded-lg">Admin Panel</a>
+                <button onclick="openCartModal()" class="relative bg-[#1a2a1f] border border-[#BF953F] px-4 py-2 rounded-xl text-[#FCF6BA] text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2 hover:bg-[#BF953F] hover:text-black transition duration-300 shadow-[0_0_15px_rgba(212,175,55,0.25)]">
+                    <span>🛒 Mis Boletos</span>
+                    <span id="cart-badge" class="w-5 h-5 rounded-full gold-bg text-black font-bold text-[10px] flex items-center justify-center">0</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="relative pt-12 sm:pt-20 pb-20 sm:pb-32 overflow-hidden z-10">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] sm:w-[900px] h-[350px] sm:h-[550px] bg-gradient-to-tr from-green-900/30 via-yellow-600/20 to-transparent blur-[120px] rounded-full pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+            
+            <div class="w-full lg:w-1/2 space-y-6 sm:space-y-8 text-center lg:text-left animate-fade-in">
+                <div class="inline-flex items-center gap-2 border border-[#BF953F]/60 bg-black/60 px-4 sm:px-5 py-2 rounded-full backdrop-blur-md shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#FCF6BA] animate-ping"></span>
+                    <span class="text-[11px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] text-[#FCF6BA] font-bold">Edición Limitada • Oro Sólido</span>
+                </div>
+                
+                <h2 class="text-4xl sm:text-6xl md:text-7xl font-serif leading-tight">
+                    El Poder <br>
+                    <span class="gold-gradient-text">del Oro Sólido</span>
+                </h2>
+                
+                <p class="text-base sm:text-lg text-gray-300 font-light max-w-xl mx-auto lg:mx-0 leading-relaxed tracking-wide">
+                    Participa por una majestuosa cadena de eslabones en oro puro. Una obra maestra diseñada para reflejar estatus y éxito absoluto. ¡Solo <strong class="text-[#FCF6BA]">400 boletos disponibles</strong>!
+                </p>
+                
+                <div class="inline-block p-[2px] rounded-2xl gold-bg mt-2 shadow-[0_15px_40px_rgba(212,175,55,0.25)] group jackpot-pulse w-full sm:w-auto">
+                    <div class="bg-[#0a0a0a] px-8 sm:px-12 py-6 rounded-2xl backdrop-blur-xl relative overflow-hidden flex flex-col justify-center items-center sm:items-start">
+                        <span class="block text-xs text-[#FCF6BA] uppercase tracking-[0.25em] mb-2 font-bold z-10 relative">Inversión por Cachito</span>
+                        <div class="flex items-baseline gap-2 z-10 relative">
+                            <span class="text-5xl sm:text-6xl md:text-7xl font-serif font-bold gold-gradient-text">$200</span>
+                            <span class="text-lg sm:text-xl text-[#BF953F] font-semibold tracking-wider">MXN</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-full lg:w-1/2 flex flex-col items-center gap-8 opacity-0" style="animation: fadeIn 1s ease-out 0.3s forwards;">
+                
+                <div class="relative w-full max-w-sm sm:max-w-md group">
+                    <div class="absolute -inset-2 gold-bg rounded-3xl opacity-50 blur-lg group-hover:opacity-85 transition duration-700"></div>
+                    <div class="relative bg-black p-2 rounded-2xl image-glow">
+                        <img src="https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=80" onerror="this.src='https://placehold.co/600x420/111/BF953F?text=Cadena+de+Oro+Solido'" alt="Cadena de Oro Sólido Exclusiva" class="rounded-xl w-full h-[360px] sm:h-[420px] object-cover object-center transform transition duration-700 group-hover:scale-[1.03]">
+                        
+                        <div class="absolute -bottom-4 right-2 sm:-right-3 gold-bg text-black font-serif font-bold text-xs sm:text-sm px-5 py-2.5 rounded-lg shadow-2xl uppercase tracking-widest border border-yellow-200">
+                            ✨ Premio Mayor 1er Lugar
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-full max-w-sm sm:max-w-md bg-[#111] border border-[#BF953F]/40 rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden backdrop-blur-md">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#BF953F] to-transparent opacity-80"></div>
+                    
+                    <div class="flex justify-between items-center text-center divide-x divide-[#222]">
+                        <div class="w-1/2 px-2 sm:px-4">
+                            <span class="block text-gray-400 uppercase text-[10px] tracking-[0.2em] sm:tracking-[0.25em] mb-2 font-bold">Disponibles</span>
+                            <span id="count-disponible" class="text-3xl sm:text-4xl font-serif text-white font-bold">400</span>
+                        </div>
+                        <div class="w-1/2 px-2 sm:px-4">
+                            <span class="block text-[#BF953F] uppercase text-[10px] tracking-[0.2em] sm:tracking-[0.25em] mb-2 font-bold">Ocupados/Pagados</span>
+                            <span id="count-ocupado" class="text-3xl sm:text-4xl font-serif text-[#FCF6BA] font-bold">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 pb-28 relative z-10">
+        
+        <div class="text-center mb-12 sm:mb-16 opacity-0" style="animation: fadeIn 1s ease-out 0.5s forwards;">
+            <h3 class="text-2xl sm:text-4xl md:text-5xl font-serif text-white mb-3 uppercase tracking-wider sm:tracking-widest"><span class="gold-gradient-text">—</span> Selecciona Tus Cachitos <span class="gold-gradient-text">—</span></h3>
+            <p class="text-gray-400 font-light tracking-wide text-sm sm:text-base">Toca los números que deseas. Puedes elegir cuantos gustes.</p>
+        </div>
+        
+        <div class="flex flex-wrap justify-center gap-4 sm:gap-8 mb-10 opacity-0" style="animation: fadeIn 1s ease-out 0.7s forwards;">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-6 h-6 sm:w-8 sm:h-8 rounded bg-gradient-to-br from-[#1f1f1f] to-[#121212] border border-[#BF953F]"></div> 
+                <span class="text-gray-200 uppercase tracking-widest text-[11px] sm:text-xs font-semibold">Disponible</span>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-6 h-6 sm:w-8 sm:h-8 rounded gold-bg border border-[#FCF6BA]"></div> 
+                <span class="text-[#FCF6BA] uppercase tracking-widest text-[11px] sm:text-xs font-semibold">Seleccionado</span>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-6 h-6 sm:w-8 sm:h-8 rounded bg-[#0a0a0a] border border-[#1a1a1a]"></div> 
+                <span class="text-gray-500 uppercase tracking-widest text-[11px] sm:text-xs font-semibold">Apartado</span>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-6 h-6 sm:w-8 sm:h-8 rounded bg-slate-800 border border-slate-600"></div> 
+                <span class="text-slate-400 uppercase tracking-widest text-[11px] sm:text-xs font-semibold">Pagado</span>
+            </div>
+        </div>
+        
+        <div id="tickets-grid" class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-4 opacity-0" style="animation: fadeIn 1s ease-out 0.9s forwards;">
+        </div>
+
+        <div class="mt-20 max-w-xl mx-auto bg-[#111] border border-[#BF953F]/40 p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden backdrop-blur-md">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#BF953F] to-transparent"></div>
+            
+            <div class="text-center mb-6">
+                <span class="text-[#BF953F] text-[10px] sm:text-xs uppercase tracking-[0.25em] font-bold block mb-1">Consulta Ciudadana</span>
+                <h4 class="text-xl sm:text-2xl font-serif text-white uppercase tracking-wider">¿Ya compraste? Busca tus Boletos</h4>
+                <p class="text-gray-400 text-xs sm:text-sm mt-1">Ingresa tu número de teléfono a 10 dígitos para consultar la base de datos.</p>
+            </div>
+
+            <div class="flex gap-2">
+                <input type="tel" id="search-phone-input" maxlength="10" placeholder="Ej. 4793319370" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="flex-1 px-4 py-3 bg-[#0a0a0a] border border-[#333] rounded-xl text-white text-sm focus:border-[#BF953F] focus:outline-none">
+                <button onclick="searchClientTicketsByPhone()" id="btn-search" class="gold-bg text-black font-serif font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-widest hover:shadow-[0_0_20px_rgba(212,175,55,0.5)] transition cursor-pointer">
+                    Buscar 🔍
+                </button>
+            </div>
+
+            <div id="search-result-container" class="mt-6 hidden bg-[#0a0a0a] border border-[#222] p-4 rounded-xl text-center">
+            </div>
+        </div>
+    </main>
+
+    <div id="floating-cart-bar" class="fixed bottom-0 left-0 w-full bg-black/95 border-t border-[#BF953F] p-4 z-40 transform translate-y-full transition-transform duration-300 backdrop-blur-lg">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4 text-center sm:text-left">
+                <div class="w-10 h-10 rounded-full gold-bg flex items-center justify-center text-black font-bold font-serif text-lg">
+                    <span id="floating-count">0</span>
+                </div>
+                <div>
+                    <span class="block text-xs text-gray-400 uppercase tracking-widest font-semibold">Boleto(s) Seleccionado(s)</span>
+                    <span id="floating-total" class="text-lg font-serif text-[#FCF6BA] font-bold">$0 MXN</span>
+                </div>
+            </div>
+            <button onclick="openCartModal()" class="w-full sm:w-auto gold-bg text-black font-serif font-bold px-8 py-3 rounded-xl uppercase tracking-widest hover:shadow-[0_0_20px_rgba(212,175,55,0.6)] transition duration-300 cursor-pointer">
+                Ver Boletos Elegidos 🛒
+            </button>
+        </div>
+    </div>
+
+    <div id="cart-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[100] p-4 opacity-0 transition-opacity duration-300">
+        <div class="p-[1px] rounded-2xl gold-bg max-w-lg w-full transform scale-95 transition-transform duration-300 shadow-[0_0_60px_rgba(212,175,55,0.3)] bg-[#0a0a0a]" id="modal-content">
+            <div class="p-6 sm:p-8 rounded-2xl relative">
+                
+                <button onclick="closeCartModal()" class="absolute top-5 right-5 text-gray-400 hover:text-white transition duration-300 z-10 cursor-pointer">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                
+                <div class="text-center mb-6">
+                    <h3 class="text-2xl font-serif text-white mb-1 uppercase tracking-widest">Tus Boletos Seleccionados</h3>
+                    <div class="h-px w-20 gold-bg mx-auto mt-2"></div>
+                </div>
+
+                <div class="mb-6 max-h-40 overflow-y-auto p-3 bg-[#111] border border-[#222] rounded-xl flex flex-wrap gap-2 justify-center" id="modal-selected-tickets-list">
+                </div>
+
+                <form id="checkout-form" onsubmit="event.preventDefault(); processCheckout();" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Nombre Completo</label>
+                        <input type="text" id="client-name" required placeholder="Ej. Juan Pérez García" class="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white focus:border-[#BF953F] focus:outline-none transition text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Teléfono a 10 dígitos</label>
+                        <input type="tel" id="client-phone" required maxlength="10" placeholder="Ej. 4793319370" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white focus:border-[#BF953F] focus:outline-none transition text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Correo Electrónico (Opcional)</label>
+                        <input type="email" id="client-email" placeholder="Ej. juan@correo.com" class="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white focus:border-[#BF953F] focus:outline-none transition text-sm">
+                    </div>
+                    
+                    <button type="submit" id="btn-whatsapp" class="w-full gold-bg text-black font-serif font-bold py-4 rounded-xl uppercase tracking-widest hover:shadow-[0_0_25px_rgba(212,175,55,0.6)] transition duration-300 flex items-center justify-center gap-3 text-sm cursor-pointer">
+                        Apartar y Enviar a WhatsApp 📱
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-alert-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center z-[110] p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-[#111] border border-[#BF953F] max-w-sm w-full p-6 rounded-2xl text-center shadow-2xl">
+            <div id="custom-alert-icon" class="w-12 h-12 rounded-full gold-bg mx-auto flex items-center justify-center text-black font-bold text-xl mb-4">i</div>
+            <h4 id="custom-alert-title" class="text-xl font-serif text-red-500 mb-2 uppercase tracking-wide">Aviso</h4>
+            <p id="custom-alert-message" class="text-gray-300 text-sm mb-6 break-words whitespace-pre-wrap"></p>
+            <button onclick="closeCustomAlert()" class="w-full gold-bg text-black font-serif font-bold py-2.5 rounded-xl uppercase tracking-widest text-xs cursor-pointer">Entendido</button>
+        </div>
+    </div>
+
+    <script>
+        const TOTAL_TICKETS = 400;
+        const WHATSAPP_NUMBER = "524793319370";
+        const PRICE_PER_TICKET = 200;
+        
+        const supabaseUrl = 'https://xlykieovpeaflryewfau.supabase.co'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhseWtpZW92cGVhZmxyeWV3ZmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTUwNDYsImV4cCI6MjEwMjA3MTA0Nn0.lndTu5WbLN9sV5zRI4p2UeOzKGkX5IQs2qIBL0ZAW5c';
+        
+        let _supabase = null;
+        let selectedTickets = new Set();
+        let ticketsMap = new Map(); 
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTicketsMap();
+            renderGridImmediately();
+            initSupabaseAndRealtime();
+        });
+
+        function showCustomAlert(title, message) {
+            document.getElementById('custom-alert-title').textContent = title;
+            document.getElementById('custom-alert-message').textContent = message;
+            const modal = document.getElementById('custom-alert-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeCustomAlert() {
+            const modal = document.getElementById('custom-alert-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        function initTicketsMap() {
+            for (let i = 0; i < TOTAL_TICKETS; i++) {
+                const num = String(i).padStart(3, '0');
+                ticketsMap.set(num, { status: 'disponible', client_name: '', client_phone: '', client_email: '' });
+            }
+        }
+
+        function renderGridImmediately() {
+            const grid = document.getElementById('tickets-grid');
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < TOTAL_TICKETS; i++) {
+                const num = String(i).padStart(3, '0');
+                const div = document.createElement('div');
+                div.id = `ticket-${num}`;
+                div.textContent = num;
+                div.className = 'ticket disponible';
+                div.onclick = () => toggleTicket(num);
+                grid.appendChild(div);
+            }
+        }
+
+        async function initSupabaseAndRealtime() {
+            try {
+                _supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+                await fetchTicketsFromDB();
+
+                _supabase.channel('public:tickets')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, payload => {
+                        console.log("Cambio detectado vía Realtime:", payload);
+                        
+                        if (payload.eventType === 'DELETE') {
+                            const num = payload.old.ticket_number;
+                            if(num) ticketsMap.set(num, { status: 'disponible', client_name: '', client_phone: '', client_email: '' });
+                        } else if (payload.new && payload.new.ticket_number) {
+                            const t = payload.new;
+                            ticketsMap.set(t.ticket_number, {
+                                status: t.ticket_status,
+                                client_name: t.client_name || '',
+                                client_phone: t.client_phone || '',
+                                client_email: t.client_email || ''
+                            });
+                            
+                            if (['vendido', 'pagado'].includes(t.ticket_status)) {
+                                if(selectedTickets.has(t.ticket_number)) {
+                                    selectedTickets.delete(t.ticket_number);
+                                    showCustomAlert("Boleto Ocupado", `El boleto #${t.ticket_number} acaba de ser apartado o pagado por alguien más. Por favor elige otro.`);
+                                    
+                                    if(!document.getElementById('cart-modal').classList.contains('hidden')){
+                                        if (selectedTickets.size === 0) closeCartModal();
+                                        else openCartModal();
+                                    }
+                                }
+                            }
+                        }
+                        updateUIState();
+                    })
+                    .subscribe();
+
+            } catch (err) {
+                console.warn("Error inicializando Supabase:", err);
+            }
+        }
+
+        async function fetchTicketsFromDB() {
+            if (!_supabase) return;
+            const { data, error } = await _supabase.from('tickets').select('*');
+            if (!error && data) {
+                data.forEach(t => {
+                    ticketsMap.set(t.ticket_number, {
+                        status: t.ticket_status || 'disponible',
+                        client_name: t.client_name || '',
+                        client_phone: t.client_phone || '',
+                        client_email: t.client_email || ''
+                    });
+                    if (['vendido', 'pagado'].includes(t.ticket_status)) {
+                        selectedTickets.delete(t.ticket_number);
+                    }
+                });
+                updateUIState();
+            }
+        }
+
+        function toggleTicket(num) {
+            const ticketData = ticketsMap.get(num);
+            if (ticketData && ['vendido', 'pagado'].includes(ticketData.status)) return;
+            
+            if (selectedTickets.has(num)) {
+                selectedTickets.delete(num);
+            } else {
+                selectedTickets.add(num);
+            }
+            
+            updateUIState();
+        }
+
+        function updateUIState() {
+            let ocupadosCount = 0;
+            
+            for (let i = 0; i < TOTAL_TICKETS; i++) {
+                const num = String(i).padStart(3, '0');
+                const el = document.getElementById(`ticket-${num}`);
+                const ticketData = ticketsMap.get(num) || { status: 'disponible' };
+                if (!el) continue;
+                
+                el.onclick = null;
+                
+                if (ticketData.status === 'pagado') {
+                    el.className = 'ticket pagado';
+                    el.title = 'Boleto Pagado';
+                } else if (ticketData.status === 'vendido') {
+                    el.className = 'ticket ocupado';
+                    el.title = 'Boleto Apartado';
+                } else if (selectedTickets.has(num)) {
+                    el.className = 'ticket seleccionado';
+                    el.title = 'Tu Selección';
+                    el.onclick = () => toggleTicket(num);
+                } else {
+                    el.className = 'ticket disponible';
+                    el.title = 'Disponible';
+                    el.onclick = () => toggleTicket(num);
+                }
+                
+                if(['pagado', 'vendido'].includes(ticketData.status)){
+                    ocupadosCount++;
+                }
+            }
+
+            document.getElementById('count-ocupado').textContent = ocupadosCount;
+            document.getElementById('count-disponible').textContent = TOTAL_TICKETS - ocupadosCount;
+            
+            const count = selectedTickets.size;
+            const total = count * PRICE_PER_TICKET;
+            
+            document.getElementById('cart-badge').textContent = count;
+            document.getElementById('floating-count').textContent = count;
+            document.getElementById('floating-total').textContent = `$${total} MXN`;
+            
+            const cartBar = document.getElementById('floating-cart-bar');
+            if (count > 0) {
+                cartBar.classList.remove('translate-y-full');
+            } else {
+                cartBar.classList.add('translate-y-full');
+            }
+        }
+
+        function openCartModal() {
+            if (selectedTickets.size === 0) {
+                showCustomAlert("Atención", "Por favor selecciona al menos un boleto antes de ver tus elegidos.");
+                return;
+            }
+            
+            const listEl = document.getElementById('modal-selected-tickets-list');
+            const sortedTickets = Array.from(selectedTickets).sort();
+            
+            listEl.innerHTML = sortedTickets.map(num => `
+                <span class="px-3 py-1 bg-[#222] border border-[#BF953F] text-[#FCF6BA] font-serif font-bold rounded-lg text-sm">
+                    #${num}
+                </span>
+            `).join('');
+            
+            const modal = document.getElementById('cart-modal');
+            const content = document.getElementById('modal-content');
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeCartModal() {
+            const modal = document.getElementById('cart-modal');
+            const content = document.getElementById('modal-content');
+            
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        async function processCheckout() {
+            const name = document.getElementById('client-name').value.trim();
+            const phone = document.getElementById('client-phone').value.trim();
+            const email = document.getElementById('client-email').value.trim();
+            const btnWhatsapp = document.getElementById('btn-whatsapp');
+            
+            if (!name || !phone) {
+                showCustomAlert("Campos Incompletos", "Por favor completa todos los campos requeridos (Nombre y Teléfono).");
+                return;
+            }
+            
+            if (phone.length !== 10) {
+                showCustomAlert("Teléfono Inválido", "El teléfono de WhatsApp debe contener exactamente 10 dígitos.");
+                return;
+            }
+
+            const ticketsArray = Array.from(selectedTickets);
+            
+            const takenTickets = ticketsArray.filter(num => ['vendido', 'pagado'].includes(ticketsMap.get(num)?.status));
+            if (takenTickets.length > 0) {
+                showCustomAlert("Aviso", "Algunos boletos seleccionados ya fueron apartados milisegundos atrás. Por favor, selecciona otros.");
+                takenTickets.forEach(num => selectedTickets.delete(num));
+                updateUIState();
+                if (selectedTickets.size === 0) closeCartModal();
+                else openCartModal(); 
+                return;
+            }
+
+            btnWhatsapp.textContent = "Procesando...";
+            btnWhatsapp.disabled = true;
+
+            if (_supabase) {
+                try {
+                    const upserts = ticketsArray.map(num => ({
+                        ticket_number: num,
+                        ticket_status: 'vendido',
+                        client_name: name,
+                        client_phone: phone,
+                        client_email: email || '', // CORRECCIÓN: Evitar nulos mandando cadena vacía
+                        updated_at: new Date().toISOString()
+                    }));
+                    const { error } = await _supabase.from('tickets').upsert(upserts, { onConflict: 'ticket_number' }).select();
+                    
+                    if(error) throw error; // Dispara el catch de abajo
+
+                } catch (e) {
+                    console.error("Error Checkout db:", e);
+                    // AQUÍ ESTÁ LA MAGIA: Te mostrará en la pantalla qué está rechazando Supabase
+                    showCustomAlert("ERROR EXACTO SUPABASE", `Captura de pantalla a esto por favor:\n\n${e.message || JSON.stringify(e)}`);
+                    btnWhatsapp.textContent = "Apartar y Enviar a WhatsApp 📱";
+                    btnWhatsapp.disabled = false;
+                    return;
+                }
+            }
+
+            const sortedTicketsStr = ticketsArray.sort().join(', ');
+            const total = selectedTickets.size * PRICE_PER_TICKET;
+            
+            const message = `Hola, mi nombre es *${name}* (Tel: ${phone}). He apartado los siguientes boletos: *[ ${sortedTicketsStr} ]* (Total: $${total} MXN). Adjunto comprobante de pago.`;
+            
+            const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+            
+            selectedTickets.clear();
+            closeCartModal();
+            updateUIState();
+            
+            btnWhatsapp.textContent = "Apartar y Enviar a WhatsApp 📱";
+            btnWhatsapp.disabled = false;
+        }
+
+        async function searchClientTicketsByPhone() {
+            const phoneInput = document.getElementById('search-phone-input').value.trim();
+            const resultContainer = document.getElementById('search-result-container');
+            const btnSearch = document.getElementById('btn-search');
+
+            if (!phoneInput || phoneInput.length !== 10) {
+                showCustomAlert("Teléfono Inválido", "Por favor ingresa un número de teléfono válido a 10 dígitos.");
+                return;
+            }
+
+            btnSearch.textContent = "Buscando...";
+            
+            try {
+                const { data, error } = await _supabase
+                    .from('tickets')
+                    .select('ticket_number, ticket_status, client_name')
+                    .eq('client_phone', phoneInput)
+                    .in('ticket_status', ['vendido', 'pagado'])
+                    .order('ticket_number', { ascending: true });
+
+                if (error) throw error;
+
+                resultContainer.classList.remove('hidden');
+
+                if (data && data.length > 0) {
+                    const foundClientName = data[0].client_name || 'Cliente Registrado';
+                    const ticketsHtml = data.map(t => {
+                        let badgeColor = t.ticket_status === 'pagado' ? 'bg-slate-800 text-slate-300 border-slate-600' : 'bg-amber-900/40 text-[#FCF6BA] border-[#BF953F]';
+                        let statusText = t.ticket_status === 'pagado' ? 'Pagado' : 'Apartado';
+                        return `<span class="px-2.5 py-1 rounded-lg border text-xs font-serif font-bold ${badgeColor}">#${t.ticket_number} (${statusText})</span>`;
+                    }).join(' ');
+
+                    resultContainer.innerHTML = `
+                        <span class="text-xs text-gray-400 uppercase tracking-widest block mb-1">Titular Encontrado Base de Datos</span>
+                        <h5 class="text-lg font-serif font-bold text-[#FCF6BA] mb-3">${foundClientName}</h5>
+                        <span class="text-xs text-gray-400 uppercase tracking-widest block mb-2">Tus Cachitos Asignados (${data.length}):</span>
+                        <div class="flex flex-wrap gap-2 justify-center">${ticketsHtml}</div>
+                    `;
+                } else {
+                    resultContainer.innerHTML = `
+                        <p class="text-sm text-gray-400">No se encontraron boletos registrados para el teléfono <strong class="text-white">${phoneInput}</strong>.</p>
+                    `;
+                }
+            } catch (err) {
+                console.error("Error buscando cliente:", err);
+                showCustomAlert("Error", "Hubo un problema al consultar la base de datos.");
+            } finally {
+                btnSearch.textContent = "Buscar 🔍";
+            }
+        }
+    </script>
+</body>
+</html>
