@@ -288,6 +288,16 @@
                         <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Correo Electrónico (Opcional)</label>
                         <input type="email" id="client-email" placeholder="Ej. juan@correo.com" class="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white focus:border-[#BF953F] focus:outline-none transition text-sm">
                     </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1.5">¿A quién notificarás tu pago?</label>
+                        <select id="admin-selector" required class="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white focus:border-[#BF953F] focus:outline-none transition text-sm appearance-none cursor-pointer">
+                            <option value="" disabled selected>Selecciona un asesor...</option>
+                            <option value="524775874578">Julio Benítez</option>
+                            <option value="524778579202">Ángel Nájera</option>
+                            <option value="524773536655">Ángel García</option>
+                        </select>
+                    </div>
                     
                     <button type="submit" id="btn-whatsapp" class="w-full gold-bg text-black font-serif font-bold py-4 rounded-xl uppercase tracking-widest hover:shadow-[0_0_25px_rgba(212,175,55,0.6)] transition duration-300 flex items-center justify-center gap-3 text-sm cursor-pointer">
                         Apartar y Enviar a WhatsApp 📱
@@ -532,10 +542,11 @@
             const name = document.getElementById('client-name').value.trim();
             const phone = document.getElementById('client-phone').value.trim();
             const email = document.getElementById('client-email').value.trim();
+            const adminPhone = document.getElementById('admin-selector').value;
             const btnWhatsapp = document.getElementById('btn-whatsapp');
             
-            if (!name || !phone) {
-                showCustomAlert("Campos Incompletos", "Por favor completa todos los campos requeridos (Nombre y Teléfono).");
+            if (!name || !phone || !adminPhone) {
+                showCustomAlert("Campos Incompletos", "Por favor completa todos los campos requeridos (Nombre, Teléfono y Asesor).");
                 return;
             }
             
@@ -584,11 +595,10 @@
             }
 
             const sortedTicketsStr = ticketsArray.sort().join(', ');
-            const total = selectedTickets.size * PRICE_PER_TICKET;
             
-            const message = `Hola, mi nombre es *${name}* (Tel: ${phone}). He apartado los siguientes boletos: *[ ${sortedTicketsStr} ]* (Total: $${total} MXN). Adjunto comprobante de pago.`;
+            const message = `Hola soy ${name}, estos son mis cachitos elegidos: [ ${sortedTicketsStr} ]. ¿Me puedes compartir la informacion para realizar la transferencia o deposito?`;
             
-            const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+            const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(message)}`;
             window.open(url, '_blank');
             
             selectedTickets.clear();
