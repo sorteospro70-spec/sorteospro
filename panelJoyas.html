@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Sorteos Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Roboto+Mono:wght@500;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+        .font-mono { font-family: 'Roboto Mono', monospace; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex flex-col">
+
+    <nav class="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center border-b-4 border-amber-500">
+        <div class="flex items-center gap-4">
+            <a href="sorteojoya.html" class="text-slate-400 hover:text-white transition flex items-center gap-1 text-sm font-medium" title="Volver al inicio">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                <span>Ver Sorteo</span>
+            </a>
+            <h1 class="text-xl font-serif">Administración Sorteo Pro</h1>
+        </div>
+        <div id="auth-buttons">
+            <button id="btn-login" class="text-sm bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded transition cursor-pointer">Iniciar Sesión</button>
+            <button id="btn-logout" class="text-sm bg-red-600 hover:bg-red-500 px-4 py-2 rounded transition hidden cursor-pointer">Cerrar Sesión</button>
+        </div>
+    </nav>
+
+    <main id="app-content" class="flex-1 max-w-7xl w-full mx-auto p-6 hidden flex-col h-full overflow-hidden">
+        
+        <div class="mb-6 flex flex-col md:flex-row gap-4 justify-between items-end">
+            <div>
+                <h2 class="text-3xl font-serif text-slate-900">Control de Cachitos y Clientes</h2>
+                <p class="text-slate-500 text-sm mt-1">Registra clientes múltiples, gestiona apartados y marca pagos en tiempo real.</p>
+            </div>
+            
+            <div class="flex gap-4 bg-white p-3 rounded-lg shadow-sm border border-slate-200">
+                <div class="text-center px-4 border-r border-slate-200">
+                    <span class="block text-xs text-slate-500 uppercase">Disponibles</span>
+                    <strong id="stat-disp" class="text-lg text-green-600">--</strong>
+                </div>
+                <div class="text-center px-4 border-r border-slate-200">
+                    <span class="block text-xs text-slate-500 uppercase">Apartados</span>
+                    <strong id="stat-vend" class="text-lg text-amber-500">--</strong>
+                </div>
+                <div class="text-center px-4">
+                    <span class="block text-xs text-slate-500 uppercase">Pagados</span>
+                    <strong id="stat-pag" class="text-lg text-slate-600">--</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-800 mb-6">
+            <h3 class="text-md font-serif font-bold text-white mb-3 flex items-center gap-2">
+                <span>🔐 Registrar Nuevo Administrador</span>
+            </h3>
+            <form id="add-admin-form" onsubmit="event.preventDefault(); addNewAdmin();" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Correo Electrónico</label>
+                    <input type="email" id="new-admin-email" required placeholder="admin@correo.com" class="w-full bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2.5 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Contraseña</label>
+                    <input type="text" id="new-admin-password" required placeholder="Contraseña de acceso" class="w-full bg-slate-800 border border-slate-600 text-white text-sm rounded-lg p-2.5 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                </div>
+                <div>
+                    <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg text-sm px-4 py-2.5 transition cursor-pointer shadow-md">Crear Cuenta Admin</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
+            <h3 class="text-md font-serif font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <span>➕ Registrar o Asignar Cliente con Múltiples Boletos</span>
+            </h3>
+            <form id="admin-register-form" onsubmit="event.preventDefault(); registerClientTickets();" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nombre Completo</label>
+                    <input type="text" id="admin-client-name" required placeholder="Ej. María López" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Teléfono WhatsApp</label>
+                    <input type="tel" id="admin-client-phone" required maxlength="10" placeholder="10 dígitos" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Correo Electrónico</label>
+                    <input type="email" id="admin-client-emails" placeholder="correo@gmail.com" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Boletos (ej. 1, 2 o 001)</label>
+                    <input type="text" id="admin-client-tickets" required placeholder="001, 002, 045" class="w-full bg-slate-50 border border-slate-300 text-sm rounded-lg p-2.5 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                </div>
+                <div>
+                    <button type="submit" id="btn-registrar" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg text-sm px-4 py-2.5 transition cursor-pointer shadow-md">Registrar y Apartar</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex flex-wrap gap-3 items-center">
+                <span class="font-semibold text-slate-700 text-sm">Actualización masiva:</span>
+                <select id="bulk-status" class="bg-slate-50 border border-slate-300 text-sm rounded-lg block p-2 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                    <option value="vendido">Marcar como Apartado (Rojo)</option>
+                    <option value="pagado">Marcar como Pagado (Gris)</option>
+                    <option value="disponible">Liberar / Disponible</option>
+                </select>
+                <input type="text" id="bulk-numbers" placeholder="Ej: 001, 045, 120" class="bg-slate-50 border border-slate-300 text-sm rounded-lg p-2 w-48 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                <button onclick="applyBulkUpdate()" class="bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg text-sm px-4 py-2 transition cursor-pointer">Aplicar</button>
+            </div>
+            
+            <div class="relative w-full md:w-64">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                    <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/></svg>
+                </div>
+                <input type="text" id="search" placeholder="Buscar local (cachito, nom, tel)..." class="bg-slate-50 border border-slate-300 text-sm rounded-lg block w-full pl-10 p-2 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" onkeyup="filterTable()">
+            </div>
+        </div>
+
+        <div class="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden flex-1 flex flex-col">
+            <div class="overflow-y-auto h-full custom-scrollbar">
+                <table class="w-full text-sm text-left text-slate-600">
+                    <thead class="text-xs text-slate-700 uppercase bg-slate-100 sticky top-0 z-10">
+                        <tr>
+                            <th scope="col" class="px-6 py-4 w-24">Cachito</th>
+                            <th scope="col" class="px-6 py-4">Estado Actual</th>
+                            <th scope="col" class="px-6 py-4">Cliente / Teléfono / Correo(s)</th>
+                            <th scope="col" class="px-6 py-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body" class="divide-y divide-slate-100">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="login-screen" class="flex-1 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-100 max-w-md w-full text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-amber-500"></div>
+            <h2 class="text-3xl font-serif mb-2 text-slate-900 mt-4">Acceso Seguro</h2>
+            <p class="text-sm text-slate-500 mb-8">Ingresa tus credenciales para administrar la venta de boletos.</p>
+            
+            <div class="space-y-4">
+                <input type="email" id="email" placeholder="Correo electrónico" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition">
+                <input type="password" id="password" placeholder="Contraseña" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition">
+                <button type="button" id="submit-login" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl transition shadow-lg shadow-slate-900/20 cursor-pointer">Ingresar al Panel</button>
+            </div>
+            <p id="login-error" class="text-red-500 text-sm mt-4 hidden bg-red-50 p-2 rounded-lg"></p>
+        </div>
+    </div>
+
+    <div id="admin-alert-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-[110] p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white border border-slate-200 max-w-lg w-full p-6 rounded-2xl text-center shadow-2xl">
+            <h4 id="admin-alert-title" class="text-xl font-serif text-slate-900 mb-2 font-bold text-red-600">Aviso</h4>
+            <p id="admin-alert-message" class="text-slate-600 text-sm mb-6 break-words whitespace-pre-wrap"></p>
+            <button onclick="closeAdminAlert()" class="w-full bg-slate-900 text-white font-bold py-2.5 rounded-xl uppercase tracking-widest text-xs cursor-pointer">Entendido</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xlykieovpeaflryewfau.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhseWtpZW92cGVhZmxyeWV3ZmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0OTUwNDYsImV4cCI6MjEwMjA3MTA0Nn0.lndTu5WbLN9sV5zRI4p2UeOzKGkX5IQs2qIBL0ZAW5c'; 
+        const TOTAL_TICKETS = 400;
+
+        let supabaseClient = null;
+        let allTickets = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            } catch(e) {
+                console.warn("Supabase init warning:", e);
+                showAlert("Fallo Crítico", "No se pudo conectar a Supabase. ¿Están bien las llaves?");
+            }
+
+            const btnLoginNav = document.getElementById('btn-login');
+            if (btnLoginNav) {
+                btnLoginNav.onclick = () => {
+                    document.getElementById('login-screen').classList.remove('hidden');
+                    document.getElementById('app-content').classList.add('hidden');
+                    document.getElementById('app-content').classList.remove('flex');
+                };
+            }
+
+            const btnLogout = document.getElementById('btn-logout');
+            if (btnLogout) btnLogout.onclick = handleLogout;
+
+            const btnSubmit = document.getElementById('submit-login');
+            if (btnSubmit) btnSubmit.onclick = handleLogin;
+
+            ['email', 'password'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') handleLogin();
+                    });
+                }
+            });
+        });
+
+        function showAlert(title, message) {
+            document.getElementById('admin-alert-title').textContent = title;
+            document.getElementById('admin-alert-message').textContent = message;
+            const modal = document.getElementById('admin-alert-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeAdminAlert() {
+            const modal = document.getElementById('admin-alert-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        async function handleLogin() {
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const errorEl = document.getElementById('login-error');
+            const btnSubmit = document.getElementById('submit-login');
+            
+            if (!emailInput || !passwordInput || !errorEl) return;
+
+            const email = emailInput.value.trim().toLowerCase();
+            const password = passwordInput.value.trim();
+            
+            errorEl.classList.add('hidden');
+            btnSubmit.textContent = "Verificando...";
+
+            if (email === "sorteospro@gmail.com" && (password === "zona ganjah" || password === "zonaganjah")) {
+                btnSubmit.textContent = "Ingresar al Panel";
+                emailInput.value = '';
+                passwordInput.value = '';
+                showAdminApp();
+                return;
+            }
+
+            if (!supabaseClient) {
+                btnSubmit.textContent = "Ingresar al Panel";
+                errorEl.textContent = "Error de conexión con Supabase.";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+            
+            const { data, error } = await supabaseClient
+                .from('admins')
+                .select('*')
+                .eq('email', email)
+                .eq('password', password);
+
+            btnSubmit.textContent = "Ingresar al Panel";
+
+            if (error) {
+                console.error("Error al consultar BD:", error);
+                errorEl.textContent = `Error BD: ${error.message}`;
+                errorEl.classList.remove('hidden');
+            } else if (data && data.length > 0) {
+                showAdminApp();
+                emailInput.value = '';
+                passwordInput.value = '';
+            } else {
+                errorEl.textContent = "Credenciales incorrectas o usuario no registrado.";
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function handleLogout() {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('app-content').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('flex');
+            document.getElementById('btn-login').classList.remove('hidden');
+            document.getElementById('btn-logout').classList.add('hidden');
+            
+            if(supabaseClient) supabaseClient.removeAllChannels();
+        }
+
+        async function addNewAdmin() {
+            const email = document.getElementById('new-admin-email').value.trim();
+            const pwd = document.getElementById('new-admin-password').value.trim();
+            
+            if(!email || !pwd) return;
+
+            const { error } = await supabaseClient.from('admins').insert([{ email, password: pwd }]);
+            
+            if(error) {
+                showAlert("Error", `Fallo al registrar: ${error.message || JSON.stringify(error)}`);
+            } else {
+                showAlert("Éxito", `Administrador ${email} registrado correctamente.`);
+                document.getElementById('new-admin-email').value = '';
+                document.getElementById('new-admin-password').value = '';
+            }
+        }
+
+        async function showAdminApp() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+            document.getElementById('app-content').classList.add('flex');
+            document.getElementById('btn-login').classList.add('hidden');
+            document.getElementById('btn-logout').classList.remove('hidden');
+            
+            await loadAdminData();
+            
+            try {
+                if(supabaseClient) {
+                    supabaseClient.channel('admin-channel')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, payload => {
+                            if (payload.new && payload.new.ticket_number) {
+                                const updated = payload.new;
+                                const index = allTickets.findIndex(t => t.numero === updated.ticket_number);
+                                const mapped = {
+                                    numero: updated.ticket_number,
+                                    estado: updated.ticket_status,
+                                    client_name: updated.client_name || '',
+                                    client_phone: updated.client_phone || '',
+                                    client_email: updated.client_email || ''
+                                };
+                                if (index !== -1) {
+                                    allTickets[index] = mapped;
+                                } else {
+                                    allTickets.push(mapped);
+                                }
+                                renderTable();
+                            } else if (payload.eventType === 'DELETE') {
+                                const num = payload.old.ticket_number;
+                                const index = allTickets.findIndex(t => t.numero === num);
+                                if (index !== -1) {
+                                    allTickets[index] = { numero: num, estado: 'disponible', client_name: '', client_phone: '', client_email: '' };
+                                    renderTable();
+                                }
+                            }
+                        }).subscribe();
+                }
+            } catch(e) {
+                console.log("Realtime sub error:", e);
+            }
+        }
+
+        async function loadAdminData() {
+            try {
+                const { data, error } = await supabaseClient.from('tickets').select('*').order('ticket_number', { ascending: true });
+                if (error) throw error;
+                
+                const loadedMap = new Map();
+                if(data) {
+                    data.forEach(t => {
+                        loadedMap.set(t.ticket_number, {
+                            numero: t.ticket_number,
+                            estado: t.ticket_status || 'disponible',
+                            client_name: t.client_name || '',
+                            client_phone: t.client_phone || '',
+                            client_email: t.client_email || ''
+                        });
+                    });
+                }
+
+                allTickets = [];
+                for (let i = 0; i < TOTAL_TICKETS; i++) {
+                    const num = String(i).padStart(3, '0');
+                    if (loadedMap.has(num)) {
+                        allTickets.push(loadedMap.get(num));
+                    } else {
+                        allTickets.push({ numero: num, estado: 'disponible', client_name: '', client_phone: '', client_email: '' });
+                    }
+                }
+                renderTable();
+            } catch (err) {
+                console.error("Error cargando datos:", err);
+                showAlert("Fallo al Cargar Datos", `Detalle exacto: ${err.message || JSON.stringify(err)}\n\nSi dice "relation does not exist", no has creado la tabla.`);
+                
+                // Generar locales para no romper la UI
+                allTickets = [];
+                for (let i = 0; i < TOTAL_TICKETS; i++) {
+                    allTickets.push({ numero: String(i).padStart(3, '0'), estado: 'disponible', client_name: '', client_phone: '', client_email: '' });
+                }
+                renderTable();
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('admin-table-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            
+            const searchEl = document.getElementById('search');
+            const searchTerm = searchEl ? searchEl.value.toLowerCase().trim() : '';
+            
+            const filtered = allTickets.filter(t => {
+                const numNormalizado = t.numero.replace(/^0+/, '');
+                const searchNormalizado = searchTerm.replace(/^0+/, '');
+                
+                return t.numero.includes(searchTerm) || 
+                       (searchNormalizado && numNormalizado === searchNormalizado) ||
+                       t.client_name.toLowerCase().includes(searchTerm) || 
+                       t.client_email.toLowerCase().includes(searchTerm) ||
+                       t.client_phone.includes(searchTerm);
+            });
+
+            let cDisp = 0, cVend = 0, cPag = 0;
+
+            filtered.forEach(ticket => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition border-b border-slate-50 last:border-0';
+                
+                let statusBadge = '';
+                if(ticket.estado === 'disponible') {
+                    statusBadge = '<span class="bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold px-3 py-1 rounded-full">Disponible</span>';
+                    cDisp++;
+                } else if(ticket.estado === 'vendido') {
+                    statusBadge = '<span class="bg-red-100 text-red-800 border border-red-200 text-xs font-bold px-3 py-1 rounded-full flex w-max items-center gap-1"><span class="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse"></span>Apartado</span>';
+                    cVend++;
+                } else if(ticket.estado === 'pagado') {
+                    statusBadge = '<span class="bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold px-3 py-1 rounded-full">Pagado</span>';
+                    cPag++;
+                }
+
+                const clientInfo = ticket.client_name ? `
+                    <div class="text-xs">
+                        <strong class="text-slate-900">${ticket.client_name}</strong><br>
+                        <span class="text-slate-500 font-mono">📱 ${ticket.client_phone}</span> | <span class="text-slate-500">✉️ ${ticket.client_email}</span>
+                    </div>
+                ` : '<span class="text-slate-400 italic text-xs">Sin cliente asignado</span>';
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-mono font-bold text-lg text-slate-900">${ticket.numero}</td>
+                    <td class="px-6 py-4">${statusBadge}</td>
+                    <td class="px-6 py-4">${clientInfo}</td>
+                    <td class="px-6 py-4 text-right space-x-1 flex-col sm:flex-row gap-1">
+                        ${ticket.estado !== 'disponible' ? `<button onclick="updateStatus('${ticket.numero}', 'disponible')" class="text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded text-xs uppercase font-bold transition cursor-pointer mb-1 sm:mb-0 w-16 text-center inline-block">Liberar</button>` : ''}
+                        ${ticket.estado !== 'vendido' ? `<button onclick="updateStatus('${ticket.numero}', 'vendido')" class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded text-xs uppercase font-bold transition cursor-pointer mb-1 sm:mb-0 w-16 text-center inline-block">Apartar</button>` : ''}
+                        ${ticket.estado !== 'pagado' ? `<button onclick="updateStatus('${ticket.numero}', 'pagado')" class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded text-xs uppercase font-bold transition cursor-pointer w-16 text-center inline-block">Pagado</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if(searchTerm === '') {
+                const statDisp = document.getElementById('stat-disp');
+                const statVend = document.getElementById('stat-vend');
+                const statPag = document.getElementById('stat-pag');
+                if(statDisp) statDisp.textContent = cDisp;
+                if(statVend) statVend.textContent = cVend;
+                if(statPag) statPag.textContent = cPag;
+            }
+        }
+
+        function filterTable() { renderTable(); }
+
+        async function updateStatus(numero, nuevoEstado) {
+            const rowItem = allTickets.find(t => t.numero === numero);
+            
+            try {
+                if (supabaseClient) {
+                    const upsertObj = { 
+                        ticket_number: numero,
+                        ticket_status: nuevoEstado, 
+                        updated_at: new Date().toISOString() 
+                    };
+                    
+                    if(nuevoEstado === 'disponible') {
+                        // En lugar de null, mandamos cadena vacía para evitar errores de restricción
+                        upsertObj.client_name = '';
+                        upsertObj.client_phone = '';
+                        upsertObj.client_email = '';
+                    } else {
+                        upsertObj.client_name = rowItem ? rowItem.client_name : '';
+                        upsertObj.client_phone = rowItem ? rowItem.client_phone : '';
+                        upsertObj.client_email = rowItem ? rowItem.client_email : '';
+                    }
+                    
+                    const { error } = await supabaseClient.from('tickets').upsert(upsertObj, { onConflict: 'ticket_number' }).select();
+                    if(error) throw error;
+                    
+                    if(rowItem) { 
+                        rowItem.estado = nuevoEstado; 
+                        if(nuevoEstado === 'disponible') {
+                            rowItem.client_name = '';
+                            rowItem.client_phone = '';
+                            rowItem.client_email = '';
+                        }
+                        renderTable(); 
+                    }
+                }
+            } catch (err) { 
+                console.error("Error al actualizar estado:", err);
+                showAlert("Error Exacto de Supabase", `Detalle: ${err.message || JSON.stringify(err)}\n\nSi dice "duplicate key value" u "onConflict", significa que 'ticket_number' NO está configurado como Primary Key en tu base de datos.`);
+            }
+        }
+
+        async function registerClientTickets() {
+            const name = document.getElementById('admin-client-name').value.trim();
+            const phone = document.getElementById('admin-client-phone').value.trim();
+            const emails = document.getElementById('admin-client-emails').value.trim();
+            const ticketsInput = document.getElementById('admin-client-tickets').value.trim();
+            const btnRegistrar = document.getElementById('btn-registrar');
+
+            if (!name || !phone || !ticketsInput) {
+                showAlert("Campos Incompletos", "Por favor llena al menos el Nombre, Teléfono y Boletos.");
+                return;
+            }
+
+            const numeros = ticketsInput.split(',').map(n => n.trim().padStart(3, '0')).filter(n => n.length > 0 && !isNaN(n));
+
+            if (numeros.length === 0) {
+                showAlert("Boletos Inválidos", "Ingresa números válidos (ej. 1, 2).");
+                return;
+            }
+
+            btnRegistrar.disabled = true;
+            btnRegistrar.textContent = "Guardando...";
+
+            try {
+                if (supabaseClient) {
+                    const upserts = numeros.map(num => ({
+                        ticket_number: num,
+                        ticket_status: 'vendido',
+                        client_name: name,
+                        client_phone: phone,
+                        client_email: emails || '', // CORRECCIÓN: Cadena vacía en vez de null
+                        updated_at: new Date().toISOString()
+                    }));
+                    
+                    const { error } = await supabaseClient.from('tickets').upsert(upserts, { onConflict: 'ticket_number' }).select();
+                    if(error) throw error;
+
+                    numeros.forEach(num => {
+                        const item = allTickets.find(t => t.numero === num);
+                        if (item) {
+                            item.estado = 'vendido';
+                            item.client_name = name;
+                            item.client_phone = phone;
+                            item.client_email = emails;
+                        }
+                    });
+                    renderTable();
+
+                    document.getElementById('admin-client-name').value = '';
+                    document.getElementById('admin-client-phone').value = '';
+                    document.getElementById('admin-client-emails').value = '';
+                    document.getElementById('admin-client-tickets').value = '';
+
+                    showAlert("Registro Exitoso", `Se han asignado ${numeros.length} boleto(s).`);
+                } else {
+                    showAlert("Error", "No hay conexión a Supabase configurada.");
+                }
+            } catch(err) {
+                console.error("Error BD Capturado:", err);
+                showAlert("ERROR EXACTO SUPABASE", `Toma captura de esto:\n\n${err.message || JSON.stringify(err)}`);
+            } finally {
+                btnRegistrar.disabled = false;
+                btnRegistrar.textContent = "Registrar y Apartar";
+            }
+        }
+
+        async function applyBulkUpdate() {
+            const inputEl = document.getElementById('bulk-numbers');
+            const statusEl = document.getElementById('bulk-status');
+            if(!inputEl || !statusEl) return;
+
+            const input = inputEl.value;
+            const nuevoEstado = statusEl.value;
+            
+            if(!input.trim()) return;
+
+            const numeros = input.split(',').map(n => n.trim().padStart(3, '0')).filter(n => n.length > 0 && !isNaN(n));
+            if(numeros.length === 0) return;
+
+            try {
+                if (supabaseClient) {
+                    const upsertData = numeros.map(num => {
+                        const item = allTickets.find(t => t.numero === num);
+                        return {
+                            ticket_number: num,
+                            ticket_status: nuevoEstado,
+                            client_name: nuevoEstado === 'disponible' ? '' : (item ? item.client_name : ''),
+                            client_phone: nuevoEstado === 'disponible' ? '' : (item ? item.client_phone : ''),
+                            client_email: nuevoEstado === 'disponible' ? '' : (item ? item.client_email : ''),
+                            updated_at: new Date().toISOString()
+                        };
+                    });
+                    
+                    const { error } = await supabaseClient.from('tickets').upsert(upsertData, { onConflict: 'ticket_number' }).select();
+                    if(error) throw error;
+                    
+                    numeros.forEach(num => {
+                        const item = allTickets.find(t => t.numero === num);
+                        if(item) {
+                            item.estado = nuevoEstado;
+                            if(nuevoEstado === 'disponible') {
+                                item.client_name = '';
+                                item.client_phone = '';
+                                item.client_email = '';
+                            }
+                        }
+                    });
+                    renderTable();
+                    inputEl.value = '';
+                    showAlert("Éxito", `Se actualizó el estado de ${numeros.length} boleto(s).`);
+                }
+            } catch(err) {
+                console.error("Error en masivo:", err);
+                showAlert("ERROR EXACTO SUPABASE", `Motivo del fallo:\n\n${err.message || JSON.stringify(err)}`);
+            }
+        }
+    </script>
+</body>
+</html>
